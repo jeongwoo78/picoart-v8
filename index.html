@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PicoArt v8 - Neural Style Transfer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 100%;
+            padding: 40px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .version {
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            display: inline-block;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .api-setup {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .api-setup h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .api-setup input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            margin-bottom: 10px;
+        }
+
+        .api-setup small {
+            color: #666;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .api-setup a {
+            color: #667eea;
+            text-decoration: none;
+        }
+
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .upload-box {
+            border: 3px dashed #667eea;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .upload-box:hover {
+            background: #f8f9fa;
+            border-color: #764ba2;
+        }
+
+        .upload-box h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-box input {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+
+        .preview-container {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow: hidden;
+            border-radius: 10px;
+        }
+
+        .preview-container img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2em;
+            border-radius: 10px;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+            font-weight: bold;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .progress-container {
+            display: none;
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-container {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .result-container.active {
+            display: block;
+        }
+
+        .result-container img {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+
+        .result-container h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+        }
+
+        .btn-download {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            margin-top: 20px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .error-message {
+            display: none;
+            background: #dc3545;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .info-box h4 {
+            color: #1976d2;
+            margin-bottom: 8px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+            color: #555;
+        }
+
+        @media (max-width: 768px) {
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="version">v8.0 - Hugging Face</div>
+            <h1>🎨 PicoArt</h1>
+            <p class="subtitle">진짜 Neural Style Transfer로 명화 스타일 적용</p>
+        </div>
+
+        <!-- API 설정 -->
+        <div class="api-setup">
+            <h3>🔑 Hugging Face API 토큰</h3>
+            <input type="password" id="hfToken" placeholder="hf_xxxxxxxxxxxxxxxxxxxxx">
+            <small>
+                📌 <a href="https://huggingface.co/settings/tokens" target="_blank">여기서 토큰 발급</a> 
+                (Settings → Access Tokens → New token)
+            </small>
+            <small>⚠️ 토큰은 브라우저에만 저장되며 서버로 전송되지 않습니다</small>
+        </div>
+
+        <div class="info-box">
+            <h4>✨ v8 업데이트</h4>
+            <ul>
+                <li>진짜 Neural Style Transfer 구현</li>
+                <li>사진 구조 완벽 보존</li>
+                <li>Hugging Face 공식 모델 사용</li>
+                <li>빠른 처리 속도 (15-30초)</li>
+            </ul>
+        </div>
+
+        <!-- 업로드 섹션 -->
+        <div class="upload-section">
+            <div class="upload-box" onclick="document.getElementById('photoInput').click()">
+                <div class="upload-icon">📷</div>
+                <h3>사진 업로드</h3>
+                <p>변환할 사진을 선택하세요</p>
+                <input type="file" id="photoInput" accept="image/*">
+                <div class="preview-container" id="photoPreview"></div>
+            </div>
+
+            <div class="upload-box" onclick="document.getElementById('styleInput').click()">
+                <div class="upload-icon">🖼️</div>
+                <h3>명화 선택</h3>
+                <p>스타일로 사용할 명화 선택</p>
+                <input type="file" id="styleInput" accept="image/*">
+                <div class="preview-container" id="stylePreview"></div>
+            </div>
+        </div>
+
+        <!-- 변환 버튼 -->
+        <button class="btn-primary" id="convertBtn" onclick="convertImage()">
+            🎨 명화 스타일로 변환하기
+        </button>
+
+        <!-- 에러 메시지 -->
+        <div class="error-message" id="errorMessage"></div>
+
+        <!-- 진행 상태 -->
+        <div class="progress-container" id="progressContainer">
+            <div class="spinner"></div>
+            <h3>명화 스타일 적용 중...</h3>
+            <p id="progressText">이미지 처리 중입니다. 잠시만 기다려주세요 (15-30초)</p>
+        </div>
+
+        <!-- 결과 -->
+        <div class="result-container" id="resultContainer">
+            <h3>✨ 변환 완료!</h3>
+            <img id="resultImage" src="" alt="Result">
+            <br>
+            <a class="btn-download" id="downloadBtn" download="picoart-result.jpg">
+                💾 다운로드
+            </a>
+        </div>
+    </div>
+
+    <script src="huggingface-nst.js"></script>
+    <script>
+        // 이미지 미리보기
+        document.getElementById('photoInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('photoPreview').innerHTML = 
+                        `<img src="${e.target.result}" alt="Photo">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('styleInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('stylePreview').innerHTML = 
+                        `<img src="${e.target.result}" alt="Style">`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // API 토큰 저장
+        document.getElementById('hfToken').addEventListener('change', function(e) {
+            localStorage.setItem('hf_token', e.target.value);
+        });
+
+        // 페이지 로드 시 저장된 토큰 불러오기
+        window.addEventListener('DOMContentLoaded', function() {
+            const savedToken = localStorage.getItem('hf_token');
+            if (savedToken) {
+                document.getElementById('hfToken').value = savedToken;
+            }
+        });
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('active');
+            setTimeout(() => {
+                errorDiv.classList.remove('active');
+            }, 5000);
+        }
+
+        function showProgress() {
+            document.getElementById('progressContainer').classList.add('active');
+            document.getElementById('resultContainer').classList.remove('active');
+            document.getElementById('convertBtn').disabled = true;
+        }
+
+        function hideProgress() {
+            document.getElementById('progressContainer').classList.remove('active');
+            document.getElementById('convertBtn').disabled = false;
+        }
+
+        function showResult(imageUrl) {
+            document.getElementById('resultImage').src = imageUrl;
+            document.getElementById('downloadBtn').href = imageUrl;
+            document.getElementById('resultContainer').classList.add('active');
+        }
+
+        async function convertImage() {
+            // 유효성 검사
+            const token = document.getElementById('hfToken').value.trim();
+            const photoFile = document.getElementById('photoInput').files[0];
+            const styleFile = document.getElementById('styleInput').files[0];
+
+            if (!token) {
+                showError('❌ Hugging Face API 토큰을 입력해주세요!');
+                return;
+            }
+
+            if (!photoFile) {
+                showError('❌ 변환할 사진을 선택해주세요!');
+                return;
+            }
+
+            if (!styleFile) {
+                showError('❌ 스타일 명화를 선택해주세요!');
+                return;
+            }
+
+            // 진행 상태 표시
+            showProgress();
+
+            try {
+                // Hugging Face API 호출
+                const result = await applyNeuralStyleTransfer(token, photoFile, styleFile);
+                
+                // 결과 표시
+                hideProgress();
+                showResult(result.imageUrl);
+
+            } catch (error) {
+                hideProgress();
+                console.error('Error:', error);
+                showError(`❌ 변환 실패: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
